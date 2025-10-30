@@ -1,0 +1,5 @@
+{
+  "name": "Tontine Manager",
+  "description": "A user-friendly app to manage tontine groups. Organize participants, run lotteries for payout order, schedule payments, and send reminders effortlessly.",
+  "requestFramePermissions": []
+}
