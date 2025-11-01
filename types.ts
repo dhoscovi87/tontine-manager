@@ -30,7 +30,7 @@ export interface Tontine {
   organizerId: string;
   amount?: number;
   frequency: Frequency;
-  joinDeadline?: string;
+  enrollmentStatus: 'open' | 'closed' | string;
   startDate?: string;
 }
 

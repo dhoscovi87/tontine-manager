@@ -4,6 +4,95 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AppState, Participant, PaymentStatus, Payout, Frequency, Tontine, MembershipStatus } from './types';
 import { UsersIcon, CalendarIcon, ShuffleIcon, CheckCircleIcon, XCircleIcon, PlusIcon, Trash2Icon, EditIcon, SendIcon, ArrowRightIcon, ChevronUpIcon, Share2Icon, ClipboardIcon, QrCodeIcon, LogInIcon, CheckIcon } from './components/icons';
 
+
+// --- PARTICIPANT LIST COMPONENT ---
+interface ParticipantListProps {
+    participants: Participant[];
+    onDelete?: (id: string) => void;
+    onEdit?: (participant: Participant) => void;
+    onApprove?: (id: string) => void;
+    onToggleStatus?: (id: string) => void;
+    isTontineActive: boolean;
+    isOrganizerView: boolean;
+    tontineStatus: string;
+}
+
+const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelete, onEdit, onApprove, onToggleStatus, isTontineActive, isOrganizerView, tontineStatus }) => {
+    if (participants.length === 0) {
+        return <p className="text-center text-text-muted py-4">No participants added yet.</p>;
+    }
+
+    return (
+        <div className="flow-root">
+          <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+              <table className="min-w-full">
+                <thead className="border-b border-base-300">
+                  <tr>
+                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-text-main sm:pl-0">Name</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Phone</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Membership</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Status</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Payment</th>
+                    <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-base-300">
+                  {participants.map((p) => (
+                    <tr key={p.id}>
+                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-text-main sm:pl-0">{p.name}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-text-muted">{p.phone}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.membershipStatus === MembershipStatus.Active ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
+                              {p.membershipStatus}
+                          </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
+                              {tontineStatus}
+                          </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          {onToggleStatus && isTontineActive ? (
+                                <button onClick={() => onToggleStatus && onToggleStatus(p.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${p.paymentStatus === PaymentStatus.Paid ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
+                                    {p.paymentStatus === PaymentStatus.Paid ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
+                                    {p.paymentStatus}
+                                </button>
+                          ) : (
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.paymentStatus === PaymentStatus.Paid ? 'bg-green-500/20 text-green-400' : 'bg-pink-500/20 text-pink-400'}`}>
+                                    {p.paymentStatus}
+                                </span>
+                          )}
+                      </td>
+                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+                          {!isTontineActive && onEdit && onDelete && onApprove && isOrganizerView && (
+                             <div className="flex justify-end gap-3 items-center">
+                                {p.membershipStatus === MembershipStatus.Pending ? (
+                                     <button onClick={() => onApprove(p.id)} className="flex items-center gap-1.5 px-3 py-1 text-sm bg-accent-success/20 text-accent-success rounded-md hover:bg-accent-success/30">
+                                         <CheckIcon className="w-4 h-4" /> Approve
+                                     </button>
+                                ) : (
+                                    <>
+                                        <button onClick={() => onEdit(p)} className="text-primary hover:text-purple-400"><EditIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => onDelete(p.id)} className="text-accent-pending hover:text-pink-400"><Trash2Icon className="w-5 h-5"/></button>
+                                    </>
+                                )}
+                            </div>
+                          )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+    );
+};
+
+
 // --- MOCK DATABASE ---
 // In a real app, this would be your backend database.
 const MOCK_DATA = {
@@ -14,13 +103,14 @@ const MOCK_DATA = {
           organizerId: 'mock-1',
           amount: 20,
           frequency: 'weekly',
-          joinDeadline: '2024-12-31',
+          enrollmentStatus: 'open',
           startDate: '2025-01-06',
         } as Tontine,
     ],
     participants: [
       { id: 'mock-1', tontineId: 'TEST123', name: 'Alice Organizer', phone: '1112223333', paymentStatus: PaymentStatus.Pending, membershipStatus: MembershipStatus.Active },
       { id: 'mock-2', tontineId: 'TEST123', name: 'Bob Member', phone: '4445556666', paymentStatus: PaymentStatus.Pending, membershipStatus: MembershipStatus.Active },
+      { id: 'mock-3', tontineId: 'TEST123', name: 'Yeni', phone: '6667778888', paymentStatus: PaymentStatus.Pending, membershipStatus: MembershipStatus.Active },
     ] as Participant[],
 };
 // ----------------------------
@@ -122,6 +212,7 @@ interface CardProps {
   isCompleted: boolean;
   onHeaderClick?: () => void;
   isOpen: boolean;
+  children: React.ReactNode;
 }
 
 const StepCard: React.FC<CardProps> = ({ title, icon, children, step, isActive, isCompleted, onHeaderClick, isOpen }) => {
@@ -148,7 +239,7 @@ const StepCard: React.FC<CardProps> = ({ title, icon, children, step, isActive, 
 
 // --- CREATE TONTINE FORM ---
 interface CreateTontineFormProps {
-    onCreate: (details: Omit<Tontine, 'id' | 'organizerId'> & { organizerName: string; organizerPhone: string; }) => void;
+    onCreate: (details: Omit<Tontine, 'id' | 'organizerId' | 'enrollmentStatus'> & { organizerName: string; organizerPhone: string; joinDeadline?: string; }) => void;
     onBack: () => void;
 }
 const CreateTontineForm: React.FC<CreateTontineFormProps> = ({ onCreate, onBack }) => {
@@ -219,7 +310,7 @@ const CreateTontineForm: React.FC<CreateTontineFormProps> = ({ onCreate, onBack 
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="joinDeadline" className="block text-sm font-medium text-text-muted">Join Deadline</label>
+                            <label htmlFor="joinDeadline" className="block text-sm font-medium text-text-muted">Enrollment Deadline</label>
                             <input type="date" id="joinDeadline" value={joinDeadline} onChange={e => setJoinDeadline(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"/>
                         </div>
                         <div>
@@ -433,6 +524,12 @@ export default function App() {
     const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
     const [openStep, setOpenStep] = useState(1);
     
+    // State for managing deadline editing
+    const [isEditingDeadline, setIsEditingDeadline] = useState(false);
+    const [deadlineType, setDeadlineType] = useState<'open' | 'closed' | 'date'>('open');
+    const [deadlineDate, setDeadlineDate] = useState('');
+
+
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const joinId = urlParams.get('join');
@@ -456,13 +553,14 @@ export default function App() {
         window.history.pushState({}, document.title, window.location.pathname);
     };
 
-    const handleCreateTontine = (details: Omit<Tontine, 'id' | 'organizerId'> & { organizerName: string; organizerPhone: string; }) => {
-        const { organizerName, organizerPhone, ...tontineDetails } = details;
+    const handleCreateTontine = (details: Omit<Tontine, 'id' | 'organizerId' | 'enrollmentStatus'> & { organizerName: string; organizerPhone: string; joinDeadline?: string; }) => {
+        const { organizerName, organizerPhone, joinDeadline, ...tontineDetails } = details;
         const organizerId = `org-${Date.now()}`;
         const newTontine: Tontine = {
             ...tontineDetails,
             id: Math.random().toString(36).substring(2, 8).toUpperCase(),
             organizerId,
+            enrollmentStatus: joinDeadline || 'open',
         };
         const organizerParticipant: Participant = {
             id: organizerId,
@@ -643,9 +741,51 @@ export default function App() {
         setIsParticipantModalOpen(true);
     };
 
+    const handleEditDeadline = () => {
+        if (!tontine) return;
+        const { enrollmentStatus } = tontine;
+        if (enrollmentStatus === 'open' || enrollmentStatus === 'closed') {
+            setDeadlineType(enrollmentStatus);
+            setDeadlineDate('');
+        } else {
+            setDeadlineType('date');
+            setDeadlineDate(enrollmentStatus);
+        }
+        setIsEditingDeadline(true);
+    };
+
+    const handleSaveDeadline = () => {
+        if (!tontine) return;
+        let newStatus: string;
+        if (deadlineType === 'date') {
+            if (!deadlineDate) return; 
+            newStatus = deadlineDate;
+        } else {
+            newStatus = deadlineType;
+        }
+        const updatedTontine = { ...tontine, enrollmentStatus: newStatus };
+        setTontine(updatedTontine);
+        setDb(prev => ({
+            ...prev,
+            tontines: prev.tontines.map(t => t.id === updatedTontine.id ? updatedTontine : t)
+        }));
+        setIsEditingDeadline(false);
+    };
+
     const isSetupComplete = participants.filter(p => p.membershipStatus === MembershipStatus.Active).length > 1;
     const isLotteryComplete = lotteryOrder.length > 0;
     const isSchedulingComplete = payoutSchedule.length > 0;
+
+    const isEnrollmentClosed = useMemo(() => {
+        if (!tontine) return false;
+        const { enrollmentStatus } = tontine;
+        if (enrollmentStatus === 'closed') return true;
+        if (enrollmentStatus === 'open') return false;
+        
+        const deadlineDate = new Date(enrollmentStatus + 'T23:59:59'); // Check against end of day
+        return !isNaN(deadlineDate.getTime()) && deadlineDate < new Date();
+    }, [tontine]);
+
 
     const tontineStatus = useMemo(() => {
         switch (appState) {
@@ -662,6 +802,49 @@ export default function App() {
                 return 'N/A';
         }
     }, [appState]);
+    
+    const isOrganizerView = ['setup', 'lottery', 'scheduling', 'active'].includes(appState);
+
+    const enrollmentDeadlineComponent = (
+      <div className="mb-6">
+        {tontine && (
+            !isEditingDeadline ? (
+            <div className="flex items-center justify-center gap-4 py-2">
+                <p className="text-lg text-text-muted">
+                    Status: <span className="font-bold text-text-main capitalize">
+                        {tontine.enrollmentStatus === 'open' || tontine.enrollmentStatus === 'closed'
+                            ? tontine.enrollmentStatus
+                            : formatDate(new Date(tontine.enrollmentStatus + 'T00:00:00'))}
+                    </span>
+                </p>
+                {isOrganizerView && (
+                    <button onClick={handleEditDeadline} className="text-primary hover:text-purple-400">
+                        <EditIcon className="w-5 h-5"/>
+                    </button>
+                )}
+            </div>
+        ) : (
+            <div className="bg-base-200/50 p-4 rounded-lg border border-base-300 max-w-lg mx-auto space-y-4">
+                <h3 className="font-semibold text-lg text-center">Set Enrollment Status</h3>
+                <div className="flex justify-center gap-4 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="deadlineType" checked={deadlineType === 'open'} onChange={() => setDeadlineType('open')} className="form-radio bg-base-100 border-base-300 text-primary focus:ring-primary"/> Open</label>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="deadlineType" checked={deadlineType === 'closed'} onChange={() => setDeadlineType('closed')} className="form-radio bg-base-100 border-base-300 text-primary focus:ring-primary"/> Close</label>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="deadlineType" checked={deadlineType === 'date'} onChange={() => setDeadlineType('date')} className="form-radio bg-base-100 border-base-300 text-primary focus:ring-primary"/> Date</label>
+                </div>
+                {deadlineType === 'date' && (
+                    <div className="flex flex-col items-center">
+                      <input type="date" value={deadlineDate} onChange={e => setDeadlineDate(e.target.value)} className="w-full max-w-xs px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"/>
+                    </div>
+                )}
+                <div className="flex justify-center gap-3 pt-2">
+                    <button onClick={() => setIsEditingDeadline(false)} className="px-4 py-2 text-sm bg-base-300 text-text-main rounded-md hover:bg-gray-600 transition-colors">Cancel</button>
+                    <button onClick={handleSaveDeadline} className="px-4 py-2 text-sm bg-primary text-white font-semibold rounded-md hover:bg-purple-500 transition-colors">Save</button>
+                </div>
+            </div>
+        )
+      )}
+      </div>
+    );
     
     const renderHomePage = () => (
         <div className="flex flex-col items-center justify-center text-center py-10 md:py-20">
@@ -732,8 +915,9 @@ export default function App() {
         const activeParticipants = participants.filter(p => p.membershipStatus === MembershipStatus.Active);
 
         return (
-            <div className="max-w-3xl mx-auto text-center">
-                <div className="bg-base-200/80 backdrop-blur-sm rounded-lg border border-base-300/50 p-8">
+            <div className="max-w-3xl mx-auto">
+                {enrollmentDeadlineComponent}
+                <div className="bg-base-200/80 backdrop-blur-sm rounded-lg border border-base-300/50 p-8 text-center">
                     <CheckCircleIcon className="w-16 h-16 text-accent-success mx-auto mb-4" />
                     <h2 className="text-3xl font-bold text-text-main">You're In!</h2>
                     <p className="text-text-muted mt-2 mb-6">You have successfully joined the "{tontine?.name}" tontine. The organizer will start the lottery and schedule once all participants have joined.</p>
@@ -774,7 +958,6 @@ export default function App() {
         </div>
     );
     
-    const isOrganizerView = ['setup', 'lottery', 'scheduling', 'active'].includes(appState);
     const renderSetupWizard = () => {
         if(appState === 'active') {
             return (
@@ -822,6 +1005,7 @@ export default function App() {
 
         return (
             <div className="space-y-6">
+                {enrollmentDeadlineComponent}
                 <StepCard title="Manage Participants" icon={<UsersIcon />} step={1} isActive={appState==='setup'} isCompleted={isSetupComplete} isOpen={openStep === 1} onHeaderClick={isSetupComplete ? () => setOpenStep(1) : undefined}>
                     <ParticipantList participants={participants} onDelete={handleDeleteParticipant} onEdit={openModalForEdit} onApprove={handleApproveParticipant} isTontineActive={false} isOrganizerView={isOrganizerView} tontineStatus={tontineStatus}/>
                     <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -829,12 +1013,13 @@ export default function App() {
                             <PlusIcon className="w-5 h-5" /> Add Participant
                         </button>
                         {appState === 'setup' && (
-                             <button onClick={() => { setAppState('lottery'); setOpenStep(2);}} disabled={!isSetupComplete} className={secondaryButtonClasses}>
+                             <button onClick={() => { setAppState('lottery'); setOpenStep(2);}} disabled={!isSetupComplete || !isEnrollmentClosed} className={secondaryButtonClasses}>
                                 Proceed to Lottery <ArrowRightIcon className="w-5 h-5" />
                             </button>
                         )}
                     </div>
                     {!isSetupComplete && <p className="text-sm text-text-muted mt-3 text-center sm:text-left">Approve at least 2 participants to proceed.</p>}
+                    {isSetupComplete && !isEnrollmentClosed && <p className="text-sm text-text-muted mt-3 text-center sm:text-right">Enrollment must be closed or deadline passed to proceed.</p>}
                 </StepCard>
 
                 <StepCard title="Run Lottery" icon={<ShuffleIcon />} step={2} isActive={appState==='lottery'} isCompleted={isLotteryComplete} isOpen={openStep === 2} onHeaderClick={isLotteryComplete ? () => setOpenStep(2) : undefined}>
@@ -940,9 +1125,9 @@ export default function App() {
     return (
         <div className="min-h-screen">
             <header className="shadow-md backdrop-blur-lg sticky top-0 z-10 border-b border-primary/20 bg-base-100/80">
-                <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary truncate pr-4">
-                        {tontine ? tontine.name : 'Tontine Manager'}
+                <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8 flex justify-end items-center relative h-16">
+                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-main absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-max">
+                        {['setup', 'lottery', 'scheduling', 'waitingRoom'].includes(appState) ? 'Enrolment deadline' : (tontine ? tontine.name : 'Tontine Manager')}
                      </h1>
                      <div className="flex items-center gap-4">
                         {tontine && appState !== 'active' && isOrganizerView && (
@@ -976,89 +1161,3 @@ export default function App() {
         </div>
     );
 }
-
-interface ParticipantListProps {
-    participants: Participant[];
-    onDelete?: (id: string) => void;
-    onEdit?: (participant: Participant) => void;
-    onApprove?: (id: string) => void;
-    onToggleStatus?: (id: string) => void;
-    isTontineActive: boolean;
-    isOrganizerView: boolean;
-    tontineStatus: string;
-}
-
-const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelete, onEdit, onApprove, onToggleStatus, isTontineActive, isOrganizerView, tontineStatus }) => {
-    if (participants.length === 0) {
-        return <p className="text-center text-text-muted py-4">No participants added yet.</p>;
-    }
-
-    return (
-        <div className="flow-root">
-          <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-              <table className="min-w-full">
-                <thead className="border-b border-base-300">
-                  <tr>
-                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-text-main sm:pl-0">Name</th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Phone</th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Membership</th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Status</th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Payment</th>
-                    <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-base-300">
-                  {participants.map((p) => (
-                    <tr key={p.id}>
-                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-text-main sm:pl-0">{p.name}</td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-text-muted">{p.phone}</td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.membershipStatus === MembershipStatus.Active ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
-                              {p.membershipStatus}
-                          </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
-                              {tontineStatus}
-                          </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          {onToggleStatus && isTontineActive ? (
-                                <button onClick={() => onToggleStatus && onToggleStatus(p.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${p.paymentStatus === PaymentStatus.Paid ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
-                                    {p.paymentStatus === PaymentStatus.Paid ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
-                                    {p.paymentStatus}
-                                </button>
-                          ) : (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.paymentStatus === PaymentStatus.Paid ? 'bg-green-500/20 text-green-400' : 'bg-pink-500/20 text-pink-400'}`}>
-                                    {p.paymentStatus}
-                                </span>
-                          )}
-                      </td>
-                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
-                          {!isTontineActive && onEdit && onDelete && onApprove && isOrganizerView && (
-                             <div className="flex justify-end gap-3 items-center">
-                                {p.membershipStatus === MembershipStatus.Pending ? (
-                                     <button onClick={() => onApprove(p.id)} className="flex items-center gap-1.5 px-3 py-1 text-sm bg-accent-success/20 text-accent-success rounded-md hover:bg-accent-success/30">
-                                         <CheckIcon className="w-4 h-4" /> Approve
-                                     </button>
-                                ) : (
-                                    <>
-                                        <button onClick={() => onEdit(p)} className="text-primary hover:text-purple-400"><EditIcon className="w-5 h-5"/></button>
-                                        <button onClick={() => onDelete(p.id)} className="text-accent-pending hover:text-pink-400"><Trash2Icon className="w-5 h-5"/></button>
-                                    </>
-                                )}
-                            </div>
-                          )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-    );
-};
