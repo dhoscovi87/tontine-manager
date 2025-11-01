@@ -1,7 +1,5 @@
 
 
-
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AppState, Participant, PaymentStatus, Payout, Frequency, Tontine, MembershipStatus } from './types';
 import { UsersIcon, CalendarIcon, ShuffleIcon, CheckCircleIcon, XCircleIcon, PlusIcon, Trash2Icon, EditIcon, SendIcon, ArrowRightIcon, ChevronUpIcon, Share2Icon, ClipboardIcon, QrCodeIcon, LogInIcon, CheckIcon } from './components/icons';
@@ -150,11 +148,13 @@ const StepCard: React.FC<CardProps> = ({ title, icon, children, step, isActive, 
 
 // --- CREATE TONTINE FORM ---
 interface CreateTontineFormProps {
-    onCreate: (details: Omit<Tontine, 'id' | 'organizerId'>) => void;
+    onCreate: (details: Omit<Tontine, 'id' | 'organizerId'> & { organizerName: string; organizerPhone: string; }) => void;
     onBack: () => void;
 }
 const CreateTontineForm: React.FC<CreateTontineFormProps> = ({ onCreate, onBack }) => {
     const [name, setName] = useState('');
+    const [organizerName, setOrganizerName] = useState('');
+    const [organizerPhone, setOrganizerPhone] = useState('');
     const [amount, setAmount] = useState('');
     const [frequency, setFrequency] = useState<Frequency>('monthly');
     const [joinDeadline, setJoinDeadline] = useState('');
@@ -163,12 +163,18 @@ const CreateTontineForm: React.FC<CreateTontineFormProps> = ({ onCreate, onBack 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) {
-            setError('Tontine Name is required.');
+        if (!name.trim() || !organizerName.trim() || !organizerPhone.trim()) {
+            setError('Tontine Name, Your Full Name, and Your WhatsApp Number are required.');
             return;
+        }
+        if (!/^\d{10,15}$/.test(organizerPhone.replace(/\D/g, ''))) {
+             setError('Please enter a valid WhatsApp number (10-15 digits).');
+             return;
         }
         onCreate({
             name,
+            organizerName,
+            organizerPhone,
             amount: amount ? parseFloat(amount) : undefined,
             frequency,
             joinDeadline: joinDeadline || undefined,
@@ -181,15 +187,25 @@ const CreateTontineForm: React.FC<CreateTontineFormProps> = ({ onCreate, onBack 
             <div className="bg-base-200/80 backdrop-blur-sm rounded-lg border border-base-300/50">
                 <div className="p-4 border-b border-base-300/50">
                     <h2 className="text-xl font-semibold text-text-main">Create a New Tontine</h2>
-                    <p className="text-sm text-text-muted mt-1">Fill in the details for your new tontine group. Only the name is required to start.</p>
+                    <p className="text-sm text-text-muted mt-1">Fill in the details for your new tontine group. Fields marked with <span className="text-accent-pending">*</span> are required.</p>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
                         <label htmlFor="tontineName" className="block text-sm font-medium text-text-muted">Tontine Name <span className="text-accent-pending">*</span></label>
                         <input type="text" id="tontineName" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm" placeholder="e.g., Family Savings Goal" />
-                         {error && <p className="text-sm text-accent-pending mt-1">{error}</p>}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor="organizerName" className="block text-sm font-medium text-text-muted">Your Full Name <span className="text-accent-pending">*</span></label>
+                            <input type="text" id="organizerName" value={organizerName} onChange={e => setOrganizerName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm" placeholder="e.g., Jane Doe" />
+                        </div>
+                        <div>
+                            <label htmlFor="organizerPhone" className="block text-sm font-medium text-text-muted">Your WhatsApp Number <span className="text-accent-pending">*</span></label>
+                            <input type="tel" id="organizerPhone" value={organizerPhone} onChange={e => setOrganizerPhone(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm" placeholder="15551234567" />
+                        </div>
+                    </div>
+                    {error && <p className="text-sm text-accent-pending">{error}</p>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-base-300/50 pt-6">
                         <div>
                             <label htmlFor="amount" className="block text-sm font-medium text-text-muted">Contribution Amount ($)</label>
                             <input type="number" id="amount" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm" placeholder="e.g., 100" />
@@ -440,16 +456,31 @@ export default function App() {
         window.history.pushState({}, document.title, window.location.pathname);
     };
 
-    const handleCreateTontine = (details: Omit<Tontine, 'id' | 'organizerId'>) => {
+    const handleCreateTontine = (details: Omit<Tontine, 'id' | 'organizerId'> & { organizerName: string; organizerPhone: string; }) => {
+        const { organizerName, organizerPhone, ...tontineDetails } = details;
         const organizerId = `org-${Date.now()}`;
         const newTontine: Tontine = {
-            ...details,
+            ...tontineDetails,
             id: Math.random().toString(36).substring(2, 8).toUpperCase(),
             organizerId,
         };
-        // In a real app, you would also create the organizer as a participant.
-        // For simplicity, we assume the organizer manages without being on the list.
+        const organizerParticipant: Participant = {
+            id: organizerId,
+            tontineId: newTontine.id,
+            name: organizerName,
+            phone: organizerPhone,
+            paymentStatus: PaymentStatus.Pending,
+            membershipStatus: MembershipStatus.Active,
+        };
+
+        setDb(prev => ({
+            tontines: [...prev.tontines, newTontine],
+            participants: [...prev.participants, organizerParticipant],
+        }));
+
         setTontine(newTontine);
+        setParticipants([organizerParticipant]);
+        setCurrentUser(organizerParticipant);
         setFrequency(newTontine.frequency);
         if (newTontine.startDate) {
             setStartDate(newTontine.startDate);
@@ -615,6 +646,22 @@ export default function App() {
     const isSetupComplete = participants.filter(p => p.membershipStatus === MembershipStatus.Active).length > 1;
     const isLotteryComplete = lotteryOrder.length > 0;
     const isSchedulingComplete = payoutSchedule.length > 0;
+
+    const tontineStatus = useMemo(() => {
+        switch (appState) {
+            case 'setup':
+            case 'waitingRoom':
+                return 'Enrollment';
+            case 'lottery':
+                return 'Lottery';
+            case 'scheduling':
+                return 'Scheduling';
+            case 'active':
+                return 'In Progress';
+            default:
+                return 'N/A';
+        }
+    }, [appState]);
     
     const renderHomePage = () => (
         <div className="flex flex-col items-center justify-center text-center py-10 md:py-20">
@@ -692,7 +739,7 @@ export default function App() {
                     <p className="text-text-muted mt-2 mb-6">You have successfully joined the "{tontine?.name}" tontine. The organizer will start the lottery and schedule once all participants have joined.</p>
                     <div className="text-left">
                         <h3 className="text-lg font-semibold text-text-main mb-4">Current Participants:</h3>
-                        <ParticipantList participants={activeParticipants} isTontineActive={true} />
+                        <ParticipantList participants={activeParticipants} isTontineActive={true} isOrganizerView={false} tontineStatus={tontineStatus}/>
                     </div>
                      <div className="mt-8">
                         <button onClick={resetTontine} className="px-4 py-2 text-sm font-semibold bg-base-300 text-text-main rounded-md hover:bg-gray-600 transition-colors">
@@ -727,6 +774,7 @@ export default function App() {
         </div>
     );
     
+    const isOrganizerView = ['setup', 'lottery', 'scheduling', 'active'].includes(appState);
     const renderSetupWizard = () => {
         if(appState === 'active') {
             return (
@@ -760,7 +808,7 @@ export default function App() {
                             <h2 className="text-xl font-semibold text-text-main">Payment Status</h2>
                         </div>
                         <div className="p-4">
-                             <ParticipantList participants={participants} onToggleStatus={handleTogglePaymentStatus} isTontineActive={true}/>
+                             <ParticipantList participants={participants} onToggleStatus={handleTogglePaymentStatus} isTontineActive={true} isOrganizerView={isOrganizerView} tontineStatus={tontineStatus} />
                         </div>
                     </div>
                 </div>
@@ -775,7 +823,7 @@ export default function App() {
         return (
             <div className="space-y-6">
                 <StepCard title="Manage Participants" icon={<UsersIcon />} step={1} isActive={appState==='setup'} isCompleted={isSetupComplete} isOpen={openStep === 1} onHeaderClick={isSetupComplete ? () => setOpenStep(1) : undefined}>
-                    <ParticipantList participants={participants} onDelete={handleDeleteParticipant} onEdit={openModalForEdit} onApprove={handleApproveParticipant} isTontineActive={false} />
+                    <ParticipantList participants={participants} onDelete={handleDeleteParticipant} onEdit={openModalForEdit} onApprove={handleApproveParticipant} isTontineActive={false} isOrganizerView={isOrganizerView} tontineStatus={tontineStatus}/>
                     <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                          <button onClick={openModalForNew} className={primaryButtonClasses}>
                             <PlusIcon className="w-5 h-5" /> Add Participant
@@ -889,8 +937,6 @@ export default function App() {
         }
     };
     
-    const isOrganizerView = ['setup', 'lottery', 'scheduling', 'active'].includes(appState);
-
     return (
         <div className="min-h-screen">
             <header className="shadow-md backdrop-blur-lg sticky top-0 z-10 border-b border-primary/20 bg-base-100/80">
@@ -938,14 +984,14 @@ interface ParticipantListProps {
     onApprove?: (id: string) => void;
     onToggleStatus?: (id: string) => void;
     isTontineActive: boolean;
+    isOrganizerView: boolean;
+    tontineStatus: string;
 }
 
-const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelete, onEdit, onApprove, onToggleStatus, isTontineActive }) => {
+const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelete, onEdit, onApprove, onToggleStatus, isTontineActive, isOrganizerView, tontineStatus }) => {
     if (participants.length === 0) {
         return <p className="text-center text-text-muted py-4">No participants added yet.</p>;
     }
-
-    const isOrganizerView = !!onApprove;
 
     return (
         <div className="flow-root">
@@ -956,7 +1002,8 @@ const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelet
                   <tr>
                     <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-text-main sm:pl-0">Name</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Phone</th>
-                    {isOrganizerView && <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Membership</th>}
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Membership</th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Status</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Payment</th>
                     <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
                       <span className="sr-only">Actions</span>
@@ -968,13 +1015,16 @@ const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelet
                     <tr key={p.id}>
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-text-main sm:pl-0">{p.name}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-text-muted">{p.phone}</td>
-                      {isOrganizerView && (
-                          <td className="whitespace-nowrap px-3 py-4 text-sm">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.membershipStatus === MembershipStatus.Active ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
-                                  {p.membershipStatus}
-                              </span>
-                          </td>
-                      )}
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.membershipStatus === MembershipStatus.Active ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
+                              {p.membershipStatus}
+                          </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
+                              {tontineStatus}
+                          </span>
+                      </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
                           {onToggleStatus && isTontineActive ? (
                                 <button onClick={() => onToggleStatus && onToggleStatus(p.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${p.paymentStatus === PaymentStatus.Paid ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
@@ -988,7 +1038,7 @@ const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelet
                           )}
                       </td>
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
-                          {!isTontineActive && onEdit && onDelete && onApprove && (
+                          {!isTontineActive && onEdit && onDelete && onApprove && isOrganizerView && (
                              <div className="flex justify-end gap-3 items-center">
                                 {p.membershipStatus === MembershipStatus.Pending ? (
                                      <button onClick={() => onApprove(p.id)} className="flex items-center gap-1.5 px-3 py-1 text-sm bg-accent-success/20 text-accent-success rounded-md hover:bg-accent-success/30">
