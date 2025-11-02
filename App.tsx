@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AppState, Participant, PaymentStatus, Payout, Frequency, Tontine, MembershipStatus } from './types';
-import { UsersIcon, CalendarIcon, ShuffleIcon, CheckCircleIcon, XCircleIcon, PlusIcon, Trash2Icon, EditIcon, SendIcon, ArrowRightIcon, ChevronUpIcon, Share2Icon, ClipboardIcon, QrCodeIcon, LogInIcon, CheckIcon } from './components/icons';
+import { UsersIcon, CalendarIcon, ShuffleIcon, CheckCircleIcon, XCircleIcon, PlusIcon, Trash2Icon, EditIcon, SendIcon, ArrowRightIcon, ChevronUpIcon, Share2Icon, ClipboardIcon, QrCodeIcon, LogInIcon, CheckIcon, TvIcon } from './components/icons';
 
 
 // --- PARTICIPANT LIST COMPONENT ---
@@ -15,9 +15,16 @@ interface ParticipantListProps {
     isTontineActive: boolean;
     isOrganizerView: boolean;
     tontineStatus: string;
+    lotteryOrder?: Participant[];
 }
 
-const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelete, onEdit, onApprove, onToggleStatus, isTontineActive, isOrganizerView, tontineStatus }) => {
+const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelete, onEdit, onApprove, onToggleStatus, isTontineActive, isOrganizerView, tontineStatus, lotteryOrder }) => {
+    const participantOrderMap = useMemo(() => {
+        if (!lotteryOrder || lotteryOrder.length === 0) return new Map<string, number>();
+        return new Map(lotteryOrder.map((p, index) => [p.id, index + 1]));
+    }, [lotteryOrder]);
+    const showOrderColumn = participantOrderMap.size > 0;
+    
     if (participants.length === 0) {
         return <p className="text-center text-text-muted py-4">No participants added yet.</p>;
     }
@@ -29,6 +36,7 @@ const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelet
               <table className="min-w-full">
                 <thead className="border-b border-base-300">
                   <tr>
+                    {showOrderColumn && <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-text-main sm:pl-0">Order</th>}
                     <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-text-main sm:pl-0">Name</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Phone</th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-text-main">Membership</th>
@@ -40,50 +48,58 @@ const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onDelet
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-base-300">
-                  {participants.map((p) => (
-                    <tr key={p.id}>
-                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-text-main sm:pl-0">{p.name}</td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-text-muted">{p.phone}</td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.membershipStatus === MembershipStatus.Active ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
-                              {p.membershipStatus}
-                          </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
-                              {tontineStatus}
-                          </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          {onToggleStatus && isTontineActive ? (
-                                <button onClick={() => onToggleStatus && onToggleStatus(p.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${p.paymentStatus === PaymentStatus.Paid ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
-                                    {p.paymentStatus === PaymentStatus.Paid ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
-                                    {p.paymentStatus}
-                                </button>
-                          ) : (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.paymentStatus === PaymentStatus.Paid ? 'bg-green-500/20 text-green-400' : 'bg-pink-500/20 text-pink-400'}`}>
-                                    {p.paymentStatus}
-                                </span>
+                  {participants.map((p) => {
+                    const order = participantOrderMap.get(p.id);
+                    return (
+                        <tr key={p.id}>
+                          {showOrderColumn && (
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-semibold text-primary sm:pl-0 text-center">
+                              {order ? `#${order}` : ''}
+                            </td>
                           )}
-                      </td>
-                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
-                          {!isTontineActive && onEdit && onDelete && onApprove && isOrganizerView && (
-                             <div className="flex justify-end gap-3 items-center">
-                                {p.membershipStatus === MembershipStatus.Pending ? (
-                                     <button onClick={() => onApprove(p.id)} className="flex items-center gap-1.5 px-3 py-1 text-sm bg-accent-success/20 text-accent-success rounded-md hover:bg-accent-success/30">
-                                         <CheckIcon className="w-4 h-4" /> Approve
-                                     </button>
-                                ) : (
-                                    <>
-                                        <button onClick={() => onEdit(p)} className="text-primary hover:text-purple-400"><EditIcon className="w-5 h-5"/></button>
-                                        <button onClick={() => onDelete(p.id)} className="text-accent-pending hover:text-pink-400"><Trash2Icon className="w-5 h-5"/></button>
-                                    </>
-                                )}
-                            </div>
-                          )}
-                      </td>
-                    </tr>
-                  ))}
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-text-main sm:pl-0">{p.name}</td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-text-muted">{p.phone}</td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.membershipStatus === MembershipStatus.Active ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
+                                  {p.membershipStatus}
+                              </span>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm">
+                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/20 text-sky-400">
+                                  {tontineStatus}
+                              </span>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm">
+                              {onToggleStatus && isTontineActive ? (
+                                    <button onClick={() => onToggleStatus && onToggleStatus(p.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${p.paymentStatus === PaymentStatus.Paid ? 'bg-accent-success/20 text-accent-success' : 'bg-accent-pending/20 text-accent-pending'}`}>
+                                        {p.paymentStatus === PaymentStatus.Paid ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
+                                        {p.paymentStatus}
+                                    </button>
+                              ) : (
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${p.paymentStatus === PaymentStatus.Paid ? 'bg-green-500/20 text-green-400' : 'bg-pink-500/20 text-pink-400'}`}>
+                                        {p.paymentStatus}
+                                    </span>
+                              )}
+                          </td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+                              {!isTontineActive && onEdit && onDelete && onApprove && isOrganizerView && (
+                                 <div className="flex justify-end gap-3 items-center">
+                                    {p.membershipStatus === MembershipStatus.Pending ? (
+                                         <button onClick={() => onApprove(p.id)} className="flex items-center gap-1.5 px-3 py-1 text-sm bg-accent-success/20 text-accent-success rounded-md hover:bg-accent-success/30">
+                                             <CheckIcon className="w-4 h-4" /> Approve
+                                         </button>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => onEdit(p)} className="text-primary hover:text-purple-400"><EditIcon className="w-5 h-5"/></button>
+                                            <button onClick={() => onDelete(p.id)} className="text-accent-pending hover:text-pink-400"><Trash2Icon className="w-5 h-5"/></button>
+                                        </>
+                                    )}
+                                </div>
+                              )}
+                          </td>
+                        </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -504,6 +520,43 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, tontine }) => 
     );
 };
 
+// --- LOTTERY TYPE MODAL ---
+interface LotteryTypeModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSelect: (type: 'automatic' | 'live') => void;
+}
+const LotteryTypeModal: React.FC<LotteryTypeModalProps> = ({ isOpen, onClose, onSelect }) => {
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Choose Lottery Type">
+            <div className="grid grid-cols-1 gap-4">
+                <button onClick={() => onSelect('automatic')} className="text-left p-4 bg-base-100 rounded-lg border-2 border-base-300 hover:border-primary transition-colors group">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-primary/20 p-3 rounded-full">
+                           <ShuffleIcon className="w-6 h-6 text-primary"/>
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-semibold text-text-main">Automatic Lottery</h3>
+                           <p className="text-sm text-text-muted">Instantly and randomly generate the payout order. Quick and easy.</p>
+                        </div>
+                    </div>
+                </button>
+                <button onClick={() => onSelect('live')} className="text-left p-4 bg-base-100 rounded-lg border-2 border-base-300 hover:border-secondary transition-colors group">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-secondary/20 p-3 rounded-full">
+                           <TvIcon className="w-6 h-6 text-secondary"/>
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-semibold text-text-main">Live Lottery</h3>
+                           <p className="text-sm text-text-muted">Schedule a date for the event. Share an invite and run the lottery live.</p>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </Modal>
+    );
+};
+
 
 export default function App() {
     // This state simulates our backend database.
@@ -529,6 +582,12 @@ export default function App() {
     const [deadlineType, setDeadlineType] = useState<'open' | 'closed' | 'date'>('open');
     const [deadlineDate, setDeadlineDate] = useState('');
 
+    // State for new lottery flow
+    const [isLotteryTypeModalOpen, setIsLotteryTypeModalOpen] = useState(false);
+    const [lotteryType, setLotteryType] = useState<'automatic' | 'live' | null>(null);
+    const [liveLotteryDate, setLiveLotteryDate] = useState('');
+    const [copiedLiveLink, setCopiedLiveLink] = useState(false);
+
 
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -550,6 +609,8 @@ export default function App() {
         setStartDate(new Date().toISOString().split('T')[0]);
         setOpenStep(1);
         setJoiningTontineId('');
+        setLotteryType(null);
+        setLiveLotteryDate('');
         window.history.pushState({}, document.title, window.location.pathname);
     };
 
@@ -686,6 +747,20 @@ export default function App() {
         setParticipants(prev => prev.map(p => 
             p.id === id ? { ...p, paymentStatus: p.paymentStatus === PaymentStatus.Paid ? PaymentStatus.Pending : PaymentStatus.Paid } : p
         ));
+    };
+
+    const handleSelectLotteryType = (type: 'automatic' | 'live') => {
+        setLotteryType(type);
+        if (type === 'live' && !liveLotteryDate) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            setLiveLotteryDate(tomorrow.toISOString().split('T')[0]);
+        }
+        setLotteryOrder([]);
+        setPayoutSchedule([]);
+        setAppState('lottery');
+        setOpenStep(2);
+        setIsLotteryTypeModalOpen(false);
     };
 
     const runLottery = useCallback(() => {
@@ -958,6 +1033,26 @@ export default function App() {
         </div>
     );
     
+    const sortedParticipants = useMemo(() => {
+        if (lotteryOrder.length > 0) {
+            const orderMap = new Map(lotteryOrder.map((p, i) => [p.id, i]));
+            return [...participants].sort((a, b) => {
+                const isA_Active = a.membershipStatus === MembershipStatus.Active;
+                const isB_Active = b.membershipStatus === MembershipStatus.Active;
+                if (isA_Active && !isB_Active) return -1;
+                if (!isA_Active && isB_Active) return 1;
+
+                const orderA = orderMap.get(a.id) ?? Infinity;
+                const orderB = orderMap.get(b.id) ?? Infinity;
+                // FIX: Subtraction-based comparison `orderA - orderB` can produce `NaN` if both values are `Infinity`, which leads to unpredictable sorting behavior and may be flagged by strict type checkers. Replaced with a more robust comparison logic.
+                if (orderA < orderB) return -1;
+                if (orderA > orderB) return 1;
+                return 0;
+            });
+        }
+        return participants;
+    }, [participants, lotteryOrder]);
+
     const renderSetupWizard = () => {
         if(appState === 'active') {
             return (
@@ -1001,19 +1096,22 @@ export default function App() {
         const buttonClasses = "w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white rounded-md transition-all duration-300 shadow-lg";
         const primaryButtonClasses = `${buttonClasses} bg-primary hover:bg-purple-500 hover:shadow-glow-primary`;
         const secondaryButtonClasses = `${buttonClasses} bg-secondary hover:bg-teal-500 hover:shadow-glow-secondary disabled:bg-base-300 disabled:shadow-none disabled:cursor-not-allowed`;
+        
+        const liveLotteryLink = tontine ? `${window.location.origin}${window.location.pathname}?liveLottery=${tontine.id}` : '';
+        const canStartLiveLottery = new Date(liveLotteryDate + 'T00:00:00') <= new Date();
 
 
         return (
             <div className="space-y-6">
                 {enrollmentDeadlineComponent}
                 <StepCard title="Manage Participants" icon={<UsersIcon />} step={1} isActive={appState==='setup'} isCompleted={isSetupComplete} isOpen={openStep === 1} onHeaderClick={isSetupComplete ? () => setOpenStep(1) : undefined}>
-                    <ParticipantList participants={participants} onDelete={handleDeleteParticipant} onEdit={openModalForEdit} onApprove={handleApproveParticipant} isTontineActive={false} isOrganizerView={isOrganizerView} tontineStatus={tontineStatus}/>
+                    <ParticipantList participants={sortedParticipants} onDelete={handleDeleteParticipant} onEdit={openModalForEdit} onApprove={handleApproveParticipant} isTontineActive={false} isOrganizerView={isOrganizerView} tontineStatus={tontineStatus} lotteryOrder={lotteryOrder}/>
                     <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                          <button onClick={openModalForNew} className={primaryButtonClasses}>
                             <PlusIcon className="w-5 h-5" /> Add Participant
                         </button>
                         {appState === 'setup' && (
-                             <button onClick={() => { setAppState('lottery'); setOpenStep(2);}} disabled={!isSetupComplete || !isEnrollmentClosed} className={secondaryButtonClasses}>
+                             <button onClick={() => setIsLotteryTypeModalOpen(true)} disabled={!isSetupComplete || !isEnrollmentClosed} className={secondaryButtonClasses}>
                                 Proceed to Lottery <ArrowRightIcon className="w-5 h-5" />
                             </button>
                         )}
@@ -1023,7 +1121,7 @@ export default function App() {
                 </StepCard>
 
                 <StepCard title="Run Lottery" icon={<ShuffleIcon />} step={2} isActive={appState==='lottery'} isCompleted={isLotteryComplete} isOpen={openStep === 2} onHeaderClick={isLotteryComplete ? () => setOpenStep(2) : undefined}>
-                     {appState === 'lottery' && (
+                    {appState === 'lottery' && lotteryType === 'automatic' && (
                         <>
                            <div className="flex flex-col sm:flex-row justify-center sm:justify-start items-center gap-4 mb-6">
                                 <button onClick={runLottery} className={primaryButtonClasses}>
@@ -1035,18 +1133,46 @@ export default function App() {
                                     </button>
                                 )}
                             </div>
-                           {isLotteryComplete && (
-                               <ul className="space-y-2">
-                                   {lotteryOrder.map((p, i) => (
-                                       <li key={p.id} className="flex items-center gap-4 p-3 bg-base-100/50 rounded-md">
-                                           <span className="font-bold text-primary text-lg">{i + 1}.</span>
-                                           <span className="text-text-main">{p.name}</span>
-                                       </li>
-                                   ))}
-                               </ul>
-                           )}
                         </>
                     )}
+                    {appState === 'lottery' && lotteryType === 'live' && (
+                        <div className="space-y-6">
+                            <div>
+                                <label htmlFor="liveLotteryDate" className="block text-sm font-medium text-text-muted">Live Lottery Date</label>
+                                <input type="date" id="liveLotteryDate" value={liveLotteryDate} onChange={e => setLiveLotteryDate(e.target.value)} className="mt-1 block w-full max-w-xs px-3 py-2 bg-base-100 border border-base-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-text-muted">Shareable Invitation Link</label>
+                                <div className="mt-1 flex rounded-md shadow-sm max-w-xs">
+                                    <input type="text" readOnly value={liveLotteryLink} className="block w-full px-3 py-2 bg-base-100 border border-base-300 rounded-l-md sm:text-sm" />
+                                    <button onClick={() => { navigator.clipboard.writeText(liveLotteryLink); setCopiedLiveLink(true); setTimeout(() => setCopiedLiveLink(false), 2000); }} className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-base-300 bg-base-300/50 text-text-muted hover:bg-base-300">
+                                       {copiedLiveLink ? <CheckCircleIcon className="w-5 h-5 text-accent-success" /> : <ClipboardIcon className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row justify-start items-center gap-4 pt-4 border-t border-base-300/50">
+                               <button onClick={runLottery} disabled={!canStartLiveLottery} className={`${primaryButtonClasses} disabled:bg-base-300 disabled:shadow-none disabled:cursor-not-allowed`}>
+                                    <ShuffleIcon className="w-5 h-5" /> Start Live Lottery
+                                </button>
+                                {isLotteryComplete && (
+                                    <button onClick={() => { setAppState('scheduling'); setOpenStep(3); }} className={secondaryButtonClasses}>
+                                        Confirm Order & Schedule <ArrowRightIcon className="w-5 h-5" />
+                                    </button>
+                                )}
+                            </div>
+                            {!canStartLiveLottery && <p className="text-sm text-text-muted">The start button will be enabled on {formatDate(new Date(liveLotteryDate + 'T00:00:00'))}.</p>}
+                        </div>
+                    )}
+                     {isLotteryComplete && (
+                           <ul className="space-y-2 mt-6">
+                               {lotteryOrder.map((p, i) => (
+                                   <li key={p.id} className="flex items-center gap-4 p-3 bg-base-100/50 rounded-md">
+                                       <span className="font-bold text-primary text-lg w-8 text-center">#{i + 1}</span>
+                                       <span className="text-text-main">{p.name}</span>
+                                   </li>
+                               ))}
+                           </ul>
+                       )}
                     {appState !== 'lottery' && isSetupComplete && <p className="text-text-muted">Lottery order will be determined here.</p>}
                     {!isSetupComplete && <p className="text-text-muted">Complete Step 1 to run the lottery.</p>}
                 </StepCard>
@@ -1155,6 +1281,11 @@ export default function App() {
                     participantToEdit={editingParticipant}
                 />
             </Modal>
+            <LotteryTypeModal
+                isOpen={isLotteryTypeModalOpen}
+                onClose={() => setIsLotteryTypeModalOpen(false)}
+                onSelect={handleSelectLotteryType}
+            />
             {tontine && (
                 <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} tontine={tontine} />
             )}
