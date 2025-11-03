@@ -718,12 +718,17 @@ export default function App() {
             tontineId: tontine.id,
         };
         setParticipants(prev => [...prev, newParticipant]);
+        setDb(prev => ({ ...prev, participants: [...prev.participants, newParticipant] }));
         setIsParticipantModalOpen(false);
     };
 
     const handleUpdateParticipant = (participantData: Omit<Participant, 'id' | 'paymentStatus' | 'tontineId' | 'membershipStatus'>) => {
         if (editingParticipant) {
-            setParticipants(prev => prev.map(p => p.id === editingParticipant.id ? { ...p, ...participantData } : p));
+            const update = (p: Participant[]) => p.map(participant =>
+                participant.id === editingParticipant.id ? { ...participant, ...participantData } : participant
+            );
+            setParticipants(update);
+            setDb(prev => ({ ...prev, participants: update(prev.participants) }));
             setEditingParticipant(null);
             setIsParticipantModalOpen(false);
         }
@@ -731,7 +736,9 @@ export default function App() {
     
     const handleDeleteParticipant = (id: string) => {
         if (window.confirm('Are you sure you want to remove this participant?')) {
-            setParticipants(prev => prev.filter(p => p.id !== id));
+            const update = (p: Participant[]) => p.filter(participant => participant.id !== id);
+            setParticipants(update);
+            setDb(prev => ({ ...prev, participants: update(prev.participants) }));
         }
     };
     
@@ -744,9 +751,11 @@ export default function App() {
     };
 
     const handleTogglePaymentStatus = (id: string) => {
-        setParticipants(prev => prev.map(p => 
-            p.id === id ? { ...p, paymentStatus: p.paymentStatus === PaymentStatus.Paid ? PaymentStatus.Pending : PaymentStatus.Paid } : p
-        ));
+        const update = (p: Participant[]) => p.map(participant =>
+            participant.id === id ? { ...participant, paymentStatus: participant.paymentStatus === PaymentStatus.Paid ? PaymentStatus.Pending : PaymentStatus.Paid } : participant
+        );
+        setParticipants(update);
+        setDb(prev => ({ ...prev, participants: update(prev.participants) }));
     };
 
     const handleSelectLotteryType = (type: 'automatic' | 'live') => {
