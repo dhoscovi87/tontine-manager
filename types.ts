@@ -15,6 +15,10 @@ export interface Participant {
   paymentStatus: PaymentStatus;
   membershipStatus: MembershipStatus;
   tontineId: string;
+  shares?: number;
+  // Fields for organizer TOTP-based authentication
+  totpSecret?: string;
+  isTotpVerified?: boolean;
 }
 
 export interface Payout {
@@ -34,4 +38,4 @@ export interface Tontine {
   startDate?: string;
 }
 
-export type AppState = 'home' | 'createTontine' | 'joinTontine' | 'login' | 'waitingRoom' | 'setup' | 'lottery' | 'scheduling' | 'active';
+export type AppState = 'home' | 'createTontine' | 'joinTontine' | 'login' | 'participantLogin' | 'waitingRoom' | 'setup' | 'lottery' | 'scheduling' | 'active' | 'liveCheckIn' | 'liveLottery' | 'organizerLogin' | 'organizerSetupTOTP';
