@@ -1105,18 +1105,24 @@ export default function App() {
       <div className="mb-6">
         {tontine && (
             !isEditingDeadline ? (
-            <div className="flex items-center justify-center gap-4 py-2">
-                <p className="text-lg text-text-muted">
-                    Status: <span className="font-bold text-text-main capitalize">
-                        {tontine.enrollmentStatus === 'open' || tontine.enrollmentStatus === 'closed'
-                            ? tontine.enrollmentStatus
-                            : formatDate(new Date(tontine.enrollmentStatus + 'T00:00:00'))}
-                    </span>
-                </p>
-                {isOrganizerView && !['liveCheckIn', 'liveLottery'].includes(appState) && (
-                    <button onClick={handleEditDeadline} className="text-primary hover:text-purple-400">
-                        <EditIcon className="w-5 h-5"/>
-                    </button>
+            <div className="text-center">
+                <div className="flex items-center justify-center gap-4 py-2">
+                    <p className="text-lg text-text-muted">
+                        Enrollment Status:
+                        <span className={`font-bold ml-2 px-3 py-1 rounded-full text-sm ${isEnrollmentClosed ? 'bg-accent-pending/20 text-accent-pending' : 'bg-accent-success/20 text-accent-success'}`}>
+                            {isEnrollmentClosed ? 'Closed' : 'Open'}
+                        </span>
+                    </p>
+                    {isOrganizerView && !['liveCheckIn', 'liveLottery'].includes(appState) && (
+                        <button onClick={handleEditDeadline} className="text-primary hover:text-purple-400">
+                            <EditIcon className="w-5 h-5"/>
+                        </button>
+                    )}
+                </div>
+                 {tontine.enrollmentStatus !== 'open' && tontine.enrollmentStatus !== 'closed' && (
+                     <p className="text-sm text-text-muted -mt-1">
+                        (Deadline: {formatDate(new Date(tontine.enrollmentStatus + 'T00:00:00'))})
+                    </p>
                 )}
             </div>
         ) : (
@@ -1289,9 +1295,16 @@ export default function App() {
                                 )}
                                 {isSetupComplete && (
                                     <div className="mt-6 pt-4 border-t border-base-300/50 text-center">
-                                        <button onClick={() => { setIsLotteryTypeModalOpen(true); }} className="px-5 py-2 flex items-center justify-center mx-auto gap-2 bg-primary text-white font-semibold rounded-md hover:bg-purple-500 transition-colors shadow-md hover:shadow-glow-primary">
+                                        <button 
+                                            onClick={() => { setIsLotteryTypeModalOpen(true); }}
+                                            disabled={!isEnrollmentClosed}
+                                            className="px-5 py-2 flex items-center justify-center mx-auto gap-2 bg-primary text-white font-semibold rounded-md hover:bg-purple-500 transition-colors shadow-md hover:shadow-glow-primary disabled:bg-base-300 disabled:text-text-muted disabled:cursor-not-allowed"
+                                        >
                                            Next: Set up Lottery <ArrowRightIcon className="w-5 h-5"/>
                                         </button>
+                                        {!isEnrollmentClosed && (
+                                            <p className="text-xs text-text-muted mt-2">The lottery can be set up once the enrollment period has ended.</p>
+                                        )}
                                     </div>
                                 )}
                             </StepCard>
@@ -1326,7 +1339,7 @@ export default function App() {
                                             <TvIcon className="w-5 h-5"/> Start Live Lottery
                                         </button>
                                     </div>
-                               ) : <p className="text-center text-text-muted">Complete Step 1 to proceed.</p> }
+                               ) : <p className="text-center text-text-muted">Complete Step 1 and close enrollment to proceed.</p> }
                             </StepCard>
 
                             {/* Step 3: Scheduling */}
