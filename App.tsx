@@ -1382,20 +1382,120 @@ export default function App() {
                                 )}
                             </StepCard>
                         </div>
+                     </div>
+                )}
+
+                {appState === 'liveCheckIn' && tontine && (
+                    <div className="max-w-3xl mx-auto bg-base-200/80 p-6 sm:p-8 rounded-lg border border-base-300/50 text-center">
+                        <h2 className="text-3xl font-bold mb-2">Live Lottery Check-in</h2>
+                        <p className="text-text-muted mb-6">Mark participants who are present for the live draw.</p>
+                        <div className="space-y-3 text-left max-w-md mx-auto mb-8">
+                            {participants.filter(p => p.membershipStatus === MembershipStatus.Active).map(p => (
+                                <label key={p.id} className="flex items-center gap-4 p-3 bg-base-100 rounded-md cursor-pointer hover:bg-base-300/50 transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={presentParticipants.has(p.id)}
+                                        onChange={() => {
+                                            const newSet = new Set(presentParticipants);
+                                            if (newSet.has(p.id)) {
+                                                newSet.delete(p.id);
+                                            } else {
+                                                newSet.add(p.id);
+                                            }
+                                            setPresentParticipants(newSet);
+                                        }}
+                                        className="h-5 w-5 rounded bg-base-300 border-gray-500 text-secondary focus:ring-secondary"
+                                    />
+                                    <span className="font-medium text-text-main">{p.name}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <button 
+                            disabled={presentParticipants.size < 2}
+                            onClick={() => {
+                                const checkedIn = participants.filter(p => presentParticipants.has(p.id));
+                                const expanded = checkedIn.flatMap(p => 
+                                    Array.from({ length: p.shares || 1 }, () => ({ id: p.id, name: p.name }))
+                                );
+                                setWheelEntries(shuffleArray(expanded));
+                                setAppState('liveLottery');
+                            }} 
+                            className="w-full max-w-md mx-auto px-5 py-3 flex items-center justify-center gap-2 bg-secondary text-white font-semibold rounded-md hover:bg-teal-500 transition-colors shadow-md hover:shadow-glow-secondary disabled:bg-base-300 disabled:text-text-muted disabled:cursor-not-allowed">
+                           <TvIcon className="w-5 h-5"/> Start Lottery with {presentParticipants.size} members
+                        </button>
                     </div>
                 )}
-            </main>
+                
+                {appState === 'liveLottery' && tontine && (
+                    <div className="max-w-5xl mx-auto flex flex-col items-center gap-8">
+                        <div className="relative flex items-center justify-center">
+                            <LiveLotteryWheel entries={wheelEntries} rotation={wheelRotation} isSpinning={isSpinning} />
+                            <div className="absolute w-8 h-8 -top-1 left-1/2 -translate-x-1/2 bg-transparent border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent border-t-[20px] border-t-red-500"></div>
+                        </div>
 
-            <Modal isOpen={isParticipantModalOpen} onClose={() => setIsParticipantModalOpen(false)} title={editingParticipant ? 'Edit Participant' : 'Add New Participant'}>
-                <ParticipantForm
-                    onSave={editingParticipant ? handleUpdateParticipant : handleAddParticipant}
-                    onClose={() => setIsParticipantModalOpen(false)}
-                    participantToEdit={editingParticipant}
-                />
-            </Modal>
-            
-            {tontine && <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} tontine={tontine} />}
-            <LotteryTypeModal isOpen={isLotteryTypeModalOpen} onClose={() => setIsLotteryTypeModalOpen(false)} onSelect={handleSelectLotteryType} />
+                        <div className="w-full max-w-md text-center">
+                             {wheelEntries.length > 0 && (
+                                <button 
+                                    onClick={() => {
+                                        if (isSpinning) return;
+                                        setIsSpinning(true);
+                                        
+                                        const winnerIndex = Math.floor(Math.random() * wheelEntries.length);
+                                        const winner = wheelEntries[winnerIndex];
+                                        const segmentAngle = 360 / wheelEntries.length;
+                                        const randomOffset = (Math.random() - 0.5) * segmentAngle * 0.8;
+                                        const targetRotation = 360 * 5 - (winnerIndex * segmentAngle) - (segmentAngle / 2) + randomOffset;
+                                        
+                                        setWheelRotation(prev => prev + targetRotation);
+
+                                        setTimeout(() => {
+                                            setSpinResult(prev => [...prev, { position: prev.length + 1, participant: winner }]);
+                                            setWheelEntries(prev => prev.filter((_, i) => i !== winnerIndex));
+                                            setIsSpinning(false);
+                                        }, 4100);
+                                    }}
+                                    disabled={isSpinning}
+                                    className="w-full px-5 py-3 text-lg flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-md hover:bg-purple-500 transition-colors shadow-md hover:shadow-glow-primary disabled:bg-base-300 disabled:text-text-muted disabled:cursor-not-allowed"
+                                >
+                                    <ShuffleIcon className="w-6 h-6"/> {isSpinning ? 'Spinning...' : 'Spin the Wheel'}
+                                </button>
+                             )}
+                             {wheelEntries.length === 0 && spinResult.length > 0 && (
+                                <button 
+                                    onClick={() => {
+                                        const finalOrder = spinResult.map(r => participants.find(p => p.id === r.participant.id)).filter(Boolean) as Participant[];
+                                        setLotteryOrder(finalOrder);
+                                        setAppState('scheduling');
+                                        setOpenStep(3);
+                                    }}
+                                    className="w-full px-5 py-3 text-lg flex items-center justify-center gap-2 bg-accent-success text-white font-semibold rounded-md hover:bg-green-500 transition-colors shadow-md hover:shadow-lg"
+                                >
+                                    <CheckCircleIcon className="w-6 h-6"/> Finalize Lottery Order
+                                </button>
+                             )}
+                        </div>
+                        
+                        {spinResult.length > 0 && (
+                            <div className="w-full max-w-md bg-base-200/80 p-4 rounded-lg border border-base-300/50">
+                                <h3 className="text-xl font-bold mb-4 text-center">Lottery Results</h3>
+                                <ol className="list-decimal list-inside space-y-2">
+                                    {spinResult.map(res => (
+                                        <li key={res.position} className="text-lg font-semibold text-text-main">
+                                            <span className="inline-block text-primary w-8">#{res.position}</span> {res.participant.name}
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {tontine && <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} tontine={tontine} />}
+                <LotteryTypeModal isOpen={isLotteryTypeModalOpen} onClose={() => setIsLotteryTypeModalOpen(false)} onSelect={handleSelectLotteryType} />
+                <Modal isOpen={isParticipantModalOpen} onClose={() => { setIsParticipantModalOpen(false); setEditingParticipant(null); }} title={editingParticipant ? 'Edit Participant' : 'Add New Participant'}>
+                    <ParticipantForm onSave={editingParticipant ? handleUpdateParticipant : handleAddParticipant} onClose={() => { setIsParticipantModalOpen(false); setEditingParticipant(null); }} participantToEdit={editingParticipant} />
+                </Modal>
+            </main>
         </div>
     );
 }
